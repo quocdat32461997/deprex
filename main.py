@@ -65,64 +65,66 @@ def main(args):
 			'score' : submission.score,
 			'url' : submission.url}
 
-	# parse parallelism
-	print("Initialize parallel codes")
-	depressed_queue = multiprocessing.Queue()
-	nondepressed_queue = multiprocessing.Queue()
-	depressed_process = [Process(target = extract_comments, args = (reddit, id, depressed_queue)) for id in depressed.keys()]
-	nondepressed_process = [Process(target = extract_comments, args = (reddit, id, nondepressed_queue)) for id in nondepressed.keys()]
+	pools = Pool(processes = 10)
+	depressed_processes = []
+	nondepressed_processes = []
+	for id in depressed.keys():
+		#try:
+			depressed_processes.append(pools.apply_async(extract_comments, args = (reddit, id)))
+		#except:
+		#	continue
+	for id in nondepressed.keys():
+		#try:
+			nondepressed_processes.append(pools.apply_async(extract_comments, args = (reddit, id)))
+		#except:
+		#	continue
 
 	# execute parallelism
-	print("Execute code parallelism")
-	# run processes
-	for d, n in zip(depressed_process, nondepressed_process):
-		d.start()
-		n.start()
-
-	# exit processes
-	for d, n in zip(depressed_process, nondepressed_process):
-		d.join()
-		n.join()
-
-	# get text
-	pritn("Get depression and nondepression comments")
-	depressed_comemnts = {}
-	for process, id in zip(depressed_process, depressed.keys()):
-		depressed_comemnts[id] = depressed_queue.get()
-
-	nondepressed_comemnts = {}
-	for process, id in zip(nondepressed_process, nondepressed.keys()):
-		nondepressed_comemnts[id] = nondepressed_queue.get()
-
+	counts = 0
+	print("Execute code parallelism: Getting comments")
+	depressed_comments = {}
+	for process, id in zip(depressed_processes, depressed.keys()):
+		comments, count = process.get()
+		depressed_comments[id] = comments
+		counts += count
+	nondepressed_comments = {}
+	for process, id in zip(nondepressed_processes, nondepressed.keys()):
+		comments, count = process.get()
+		nondepressed_comments[id] = comments
+		counts += count
 	# save data
 	# save sub-topics
 	print("Write depression and nondepression topics")
 	with open('depressed_topics.json', 'w') as file:
-		json.dumps(file)
+		json.dump(depressed, file)
 	with open('nondepressed_topics.json', 'w') as file:
-		json.dumps(file)
+		json.dump(nondepressed, file)
 
 	# save comments
 	print("Write depression and nondepression comments")
 	with open('depressed_comments.json', 'w') as file:
-		json.dumps(file)
+		json.dump(depressed_comments, file)
 	with open('nondepressed_comemnts.json', 'w') as file:
-		json.dumps(file)
-
-def extract_comments(reddit, id, output):
+		json.dump(nondepressed_comments, file)
+	print("Counts", counts)
+def extract_comments(reddit, id):
 	print("Get comments for id - {}".format(id))
 	results = []
-	for comment in  reddit.submission(id = id).comments:
+	count = 0
+	submission = reddit.submission(id = id)
+	for _ in range(5):
+		try:
+			submission.comments.replace_more(limit = 5)
+			break
+		except:
+			print("Continue")
+	print("Skip")
+	for comment in submission.comments.list():
 		if not isinstance(comment, MoreComments):
-			# add main comment
 			results.append(comment.body)
-		else:
-			# add children
-			for child in comment.children:
-				results.extend(reddit.submission(id = child).comments.list())
-	#print(results)
-	#input()
-	output.put(results)
+			count += 1
+	print("Count of comments", count)
+	return results, count
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description = 'Argument Parser')
