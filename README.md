@@ -3,6 +3,7 @@ An implementation of Python Reddit API Wrapper (PRAW) to crawl text data of depr
 
 # Execute the following command
 ```
+pip3 install -r requirements.txt
 python3 main.py --credentiasl credentials.json
 ```
 that **credentials.json** is a JSON file structured as:
