@@ -80,18 +80,19 @@ def main(args):
 		#	continue
 
 	# execute parallelism
-	counts = 0
+	depressed_counts = 0
+	nondepressed_counts = 0
 	print("Execute code parallelism: Getting comments")
 	depressed_comments = {}
 	for process, id in zip(depressed_processes, depressed.keys()):
 		comments, count = process.get()
 		depressed_comments[id] = comments
-		counts += count
+		depressed_counts += count
 	nondepressed_comments = {}
 	for process, id in zip(nondepressed_processes, nondepressed.keys()):
 		comments, count = process.get()
 		nondepressed_comments[id] = comments
-		counts += count
+		nondepressed_counts += count
 	# save data
 	# save sub-topics
 	print("Write depression and nondepression topics")
@@ -106,7 +107,9 @@ def main(args):
 		json.dump(depressed_comments, file)
 	with open('nondepressed_comemnts.json', 'w') as file:
 		json.dump(nondepressed_comments, file)
-	print("Counts", counts)
+	print("Depressed Counts", depressed_counts)
+	print("Nondepressed Counts", nondepressed_counts)
+
 def extract_comments(reddit, id):
 	print("Get comments for id - {}".format(id))
 	results = []
@@ -114,10 +117,10 @@ def extract_comments(reddit, id):
 	submission = reddit.submission(id = id)
 	for _ in range(5):
 		try:
-			submission.comments.replace_more(limit = 5)
+			submission.comments.replace_more(limit = 20)
 			break
 		except:
-			print("Continue")
+			print("Continue -", id)
 	print("Skip")
 	for comment in submission.comments.list():
 		if not isinstance(comment, MoreComments):
